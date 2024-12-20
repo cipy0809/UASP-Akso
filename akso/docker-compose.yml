@@ -1,0 +1,106 @@
+services:
+  # 1. Web Server (NGINX)
+  web:
+    image: nginx:latest
+    container_name: web_server
+    ports:
+      - "8080:80"
+    volumes:
+      - ./html:/usr/share/nginx/html
+    networks:
+      - app_network
+
+  # 2. Database (MySQL)
+  database:
+    image: mysql:5.7
+    container_name: mysql_db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: mydb
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: mypassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - app_network
+
+  # 3. Database Admin Tool (Adminer)
+  adminer:
+    image: adminer:latest
+    container_name: adminer_tool
+    ports:
+      - "8081:8080"
+    networks:
+      - app_network
+
+  # 4. Cache (Redis)
+  redis:
+    image: redis:latest
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
+    networks:
+      - app_network
+
+  # 5. Message Queue (RabbitMQ)
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_service
+    ports:
+      - "5672:5672"   # Port untuk pesan
+      - "15672:15672" # Port untuk management UI
+    networks:
+      - app_network
+
+  # 6. Application Backend (Custom API)
+  backend:
+    image: python:3.9
+    container_name: backend_api
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    command: python app.py
+    ports:
+      - "5000:5000"
+    networks:
+      - app_network
+    depends_on:
+      - database
+      - redis
+
+  # 7. Monitoring Tool (Prometheus)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus_monitor
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - app_network
+
+  # 8. Frontend Application (React)
+  frontend:
+    image: node:18
+    container_name: frontend_app
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    command: npm start
+    ports:
+      - "3000:3000"
+    networks:
+      - app_network
+    depends_on:
+      - backend
+
+# Networks
+networks:
+  app_network:
+    driver: bridge
+
+# Volumes
+volumes:
+  db_data:
